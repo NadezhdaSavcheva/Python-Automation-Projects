@@ -81,7 +81,15 @@ def wait_until_stable(p: Path, stable_seconds: int) -> bool:
         time.sleep(1)
 
 class NewDownloadHandler(FileSystemEventHandler):
+    def _is_in_watch(self, path: Path) -> bool:
+        try:
+            return path.parent.resolve() == WATCH_DIR
+        except Exception:
+            return False
+
     def _process(self, p: Path):
+        if not self._is_in_watch(p):
+            return
         if should_ignore(p):
             return
         if wait_until_stable(p, STABLE_SECONDS):
