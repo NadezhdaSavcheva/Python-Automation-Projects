@@ -26,6 +26,8 @@ EXT = {
     "apps":     {"exe","msi","dmg","pkg","deb","rpm","apk"},
 }
 
+IGNORE_SUFFIXES = (".part", ".crdownload", ".tmp")
+
 def category_for(path: Path) -> str:
     ext = path.suffix.lower().lstrip(".")
     for cat, exts in EXT.items():
@@ -50,18 +52,28 @@ def move_file(p: Path):
     move(str(p), str(target))
     logging.info(f"Moved: {p.name} -> {target}")
 
+def should_ignore(path: Path) -> bool:
+    s = str(path).lower()
+    if not path.exists() or not path.is_file():
+        return True
+    if any(s.endswith(suf) for suf in IGNORE_SUFFIXES):
+        return True
+    if path.name.startswith("~$"):
+        return True
+    return False
+
 class NewDownloadHandler(FileSystemEventHandler):
     def on_created(self, event):
         if isinstance(event, FileCreatedEvent):
-            path = Path(event.src_path)
-            if path.is_file():
-                move_file(path)
+            p = Path(event.src_path)
+            if not should_ignore(p):
+                move_file(p)
 
     def on_moved(self, event):
         if isinstance(event, FileMovedEvent):
-            path = Path(event.dest_path)
-            if path.is_file():
-                move_file(path)
+            p = Path(event.dest_path)
+            if not should_ignore(p):
+                move_file(p)
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
