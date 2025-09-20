@@ -27,6 +27,7 @@ EXT = {
 }
 
 IGNORE_SUFFIXES = (".part", ".crdownload", ".tmp")
+STABLE_SECONDS = 2
 
 def category_for(path: Path) -> str:
     ext = path.suffix.lower().lstrip(".")
@@ -62,18 +63,37 @@ def should_ignore(path: Path) -> bool:
         return True
     return False
 
+def wait_until_stable(p: Path, stable_seconds: int) -> bool:
+    same_for = 0
+    last = -1
+    while True:
+        try:
+            size = p.stat().st_size
+        except FileNotFoundError:
+            return False
+        if size == last:
+            same_for += 1
+            if same_for >= stable_seconds:
+                return True
+        else:
+            same_for = 0
+            last = size
+        time.sleep(1)
+
 class NewDownloadHandler(FileSystemEventHandler):
+    def _process(self, p: Path):
+        if should_ignore(p):
+            return
+        if wait_until_stable(p, STABLE_SECONDS):
+            move_file(p)
+
     def on_created(self, event):
         if isinstance(event, FileCreatedEvent):
-            p = Path(event.src_path)
-            if not should_ignore(p):
-                move_file(p)
+            self._process(Path(event.src_path))
 
     def on_moved(self, event):
         if isinstance(event, FileMovedEvent):
-            p = Path(event.dest_path)
-            if not should_ignore(p):
-                move_file(p)
+            self._process(Path(event.dest_path))
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
