@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
